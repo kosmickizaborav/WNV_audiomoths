@@ -1,8 +1,6 @@
 library(tidyverse)
-library(readxl)
 library(here)
 library(googledrive)
-#library(googlesheets4)
 
 # login to google account
 # drive_auth()
@@ -75,5 +73,8 @@ drive_find(
   ) |>
   drive_ls() |> 
   filter(name == "AudioMoth") |> 
-  drive_download(path = here("Data", "audiomoth_field_data.xlsx"))
+  drive_download(
+    path = here("Data", "audiomoth_field_data.xlsx"), 
+    overwrite = T
+  )
 
