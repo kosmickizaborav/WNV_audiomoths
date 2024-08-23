@@ -21,6 +21,7 @@
 
 library(tidyverse)
 library(here)
+library(readxl)
 library(googledrive)
 
 # login to google account
@@ -34,7 +35,7 @@ drive_dir <- "BBDD_ALEX_Ocells_Aiguamolls"
 # years of the study to download (subfolders in the main drive folder)
 years <- c("2024")
 # folder name where the data will be downloaded
-census_dir <- here(here("Data", "Census_alex"))
+census_dir <- here("Data", "Census_alex")
 
 if(!dir.exists(census_dir)){
   
@@ -42,7 +43,12 @@ if(!dir.exists(census_dir)){
   
   census_dir |> dir.create()
 
-  }
+}
+
+drive_dir <- "BBDD_ALEX_Ocells_Aiguamolls"
+
+years <- c("2024")
+
 
 drive_get(drive_dir) |> 
   drive_ls() |> 
@@ -53,10 +59,10 @@ drive_get(drive_dir) |>
   group_split(name) |> 
   map(~{
     
+    year_dir <- here(census_dir, .x$name)
+    
     # create the folder for each year
-    if(!dir.exists(here(census_dir, .x$name))) {
-      dir.create(here(census_dir, .x$name))
-    }
+    if(!dir.exists(year_dir)) { year_dir |> dir.create() }
     
     # list all the transect folders
     .x |> 
@@ -66,21 +72,19 @@ drive_get(drive_dir) |>
     
   }) |> 
   bind_rows() |> 
-  # split by transect folders
   group_split(name) |> 
   map(~{
+    
+    year <- .x$year
     
     # create a folder for each transect
     trans_dir <- here(census_dir, year, .x$name)
     
-    if(!dir.exists(trans_dir)) {
-      dir.create(trans_dir)
-    }
-    
-    year <- .x$year
+    if(!dir.exists(trans_dir)) { trans_dir |> dir.create() }
     
     # list the files within each transect folder and download the data
-    drive_ls(.x, type = "xlsx") |> 
+    .x |> 
+      drive_ls(type = "xlsx") |> 
       as_tibble() |> 
       mutate(year = .x$year) |> 
       bind_rows() |> 
