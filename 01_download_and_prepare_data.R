@@ -147,7 +147,6 @@ years |>
               # first 5 rows have census info data
               filter(row_number() < 6) |> 
               # all info are in one column, separate them
-              mutate(x1 = str_squish(x1)) |> 
               separate_wider_delim(
                 x1, ":", names = c("var", "value"), 
                 too_many = "merge", 
@@ -161,7 +160,8 @@ years |>
               # make columns for each info value
               pivot_wider(names_from = var, values_from = value) |>
               janitor::clean_names() |> 
-              select(any_of(info_cols))
+              select(any_of(info_cols)) |> 
+              mutate_all(str_squish)
             
             # loading transect data
             trans_df <- fname |>
