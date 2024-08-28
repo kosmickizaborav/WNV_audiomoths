@@ -125,14 +125,18 @@ repl <- c("x4" = "s1", "x6" = "s2", "x8" = "s3", "x10" = "s4", "x12" = "s5",
 years |> 
   map(~{
     
-    trans_dirs <- here("Data", "Census_alex", .x) |> 
+    year <- .x 
+    
+    trans_dirs <- here(census_dir, year) |> 
       list.dirs() 
     
-    # [-1] to remove the main directory (here("Data", "Census_alex", .x))
+    # [-1] to remove the main directory (here(census_dir, year))
     trans_dirs[-1] |> 
       map(~{
         
         trans_dir <- .x 
+        
+        trans_name <- str_split_i(trans_dir, "/", -1)
         
         trans_dir |> 
           list.files() |> 
@@ -200,12 +204,15 @@ years |>
               # mutate(
               #   tname_alex = tname
               # ) |>
-              bind_cols(info) 
+              bind_cols(info) |> 
+              mutate(trans_official_name = str_split_i(trans_dir, "/", -1))
             
           }
           ) |> 
           bind_rows() |> 
-          write_csv(here(str_c(trans_dir, "_complete_data.csv")))
+          write_csv(
+            here(
+              census_dir, str_c(year, "_", trans_name, "_complete_data.csv")))
       }
       )
   }
