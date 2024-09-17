@@ -1,19 +1,14 @@
 #' ---
-#' title: "01_download_and_prepare_data"
+#' title: "02_prepare_data_for_analysis"
 #' output: github_document
 #' ---
 
 # INFO --------------------------------------------------------------------
 
-#' **SECTION 1 - Downloading census files from Google drive** 
-#' download census data from Alex. All data is located in the folder
-#' "BBDD_ALEX_Ocells_Aiguamolls", organized by year and transect.
-#' kept the same structure when downloading. 
-#' 
-#' **SECTION 2 - Standardizing census data for analysis**
+#' **SECTION 1 - Standardizing census data for analysis**
 #' reformating alex tables to be easier for analysis. 
 #' 
-#' **SECTION 3 - Downloading audiomoth fieldsheet**
+#' **SECTION 2 - Gathering results from BirdNet analysis**
 #' downloading the excel where we enter the basic audiomoth field information
 
 
@@ -22,98 +17,15 @@
 library(tidyverse)
 library(here)
 library(readxl)
-library(googledrive)
 
-# login to google account
-drive_auth("ninaupupina@gmail.com")
-
-
-# 1 - Downloading census files from Google drive-------------------------------
-
-# folder name on the google drive where Alex uploads the data
-drive_dir <- "BBDD_ALEX_Ocells_Aiguamolls"
-# years of the study to download (subfolders in the main drive folder)
-years <- c("2024")
 # folder name where the data will be downloaded
-census_dir <- here("Data", "Census_alex")
-
-if(!dir.exists(census_dir)){
-  
-  if(!dir.exists(here("Data"))) { here("Data") |> dir.create() }
-  
-  census_dir |> dir.create()
-
-}
-
-drive_dir <- "BBDD_ALEX_Ocells_Aiguamolls"
-
+census_dir <- here("Data", "Census")
 years <- c("2024")
 
+birdnet_dir <- here("Data", "Birdnet")
+audiomoth_results <- "/home/nina/Audiomoths/Results"
 
-drive_get(drive_dir) |> 
-  drive_ls() |> 
-  as_tibble() |> 
-  # selecting only the years of interest (for now only 2024)
-  filter(name %in% years) |> 
-  # split by year
-  group_split(name) |> 
-  map(~{
-    
-    year_dir <- here(census_dir, .x$name)
-    
-    # create the folder for each year
-    if(!dir.exists(year_dir)) { year_dir |> dir.create() }
-    
-    # list all the transect folders
-    .x |> 
-      drive_ls(type = "folder") |> 
-      as_tibble() |> 
-      mutate(year = .x$name)
-    
-  }) |> 
-  bind_rows() |> 
-  group_split(name) |> 
-  map(~{
-    
-    year <- .x$year
-    
-    # create a folder for each transect
-    trans_dir <- here(census_dir, year, .x$name)
-    
-    if(!dir.exists(trans_dir)) { trans_dir |> dir.create() }
-    
-    # list the files within each transect folder and download the data
-    .x |> 
-      drive_ls(type = "xlsx") |> 
-      as_tibble() |> 
-      mutate(year = .x$year) |> 
-      bind_rows() |> 
-      group_split(name) |> 
-      map(~{
-        
-        f_name <- .x$name |> 
-          str_remove(".xlsx") |> 
-          janitor::make_clean_names() |> 
-          # correcting some typos
-          str_replace_all(c(
-            "cens0" = "cens_0", 
-            "sacara" = "sacra", 
-            "vila_sacra" = "vilasacra"
-            )
-          )
-        
-        drive_download(
-          .x, 
-          path = here(trans_dir, str_c(.x$year, "_", f_name, ".xlsx")), 
-          overwrite = T
-        )
-        
-      })
-    
-  }) 
-
-
-# 2 - Standardizing census data for analysis ------------------------------
+# 1 - Standardizing census data for analysis ------------------------------
 
 # census info columns
 info_cols <- c("data", "transecte", "horari_inici", "horari_final", "ornitoleg")  
@@ -142,9 +54,9 @@ years |>
           list.files() |> 
           map(~{
             
-            fname <- here(trans_dir, .x)
+            fname <- .x
             
-            info <- fname |> 
+            info <- here(trans_dir, fname) |> 
               read_xlsx(col_names = F) |> 
               janitor::clean_names() |> 
               select(1) |> 
@@ -156,7 +68,7 @@ years |>
                 too_many = "merge", 
                 too_few = "align_start"
               ) |>
-              # change some noted typos
+              # change some observed typos
               mutate(
                 var = str_replace(var, " ", "_"),
                 value = str_replace(value, "'", ":")
@@ -165,10 +77,11 @@ years |>
               pivot_wider(names_from = var, values_from = value) |>
               janitor::clean_names() |> 
               select(any_of(info_cols)) |> 
+              # remove extra spaces
               mutate_all(str_squish)
             
             # loading transect data
-            trans_df <- fname |>
+            trans_df <- here(trans_dir, fname)|>
               # skip info columns
               read_xlsx(skip = 5) |>
               janitor::clean_names() |>
@@ -201,39 +114,82 @@ years |>
                 total = sum(count, na.rm = T),
                 .by = c("species", "sector", "banda")
               ) |>
-              # mutate(
-              #   tname_alex = tname
-              # ) |>
               bind_cols(info) |> 
-              mutate(trans_official_name = str_split_i(trans_dir, "/", -1))
+              mutate(trans_official_name = trans_name)
             
           }
           ) |> 
           bind_rows() |> 
           write_csv(
             here(
-              census_dir, str_c(year, "_", trans_name, "_complete_data.csv")))
+              census_dir, 
+              str_c(
+                year, "_", str_remove(trans_name, " "), "_complete_data.csv")
+              )
+            )
       }
       )
   }
   )
 
 
+# 2 - Gathering BirdNet results -----------------------------------------------
 
-# 3 - Downloading audiomoth fieldsheet ------------------------------------
+audiomoths <- here(birdnet_dir, "audiomoth_field_data.xlsx")|> 
+  read_xlsx() |> 
+  janitor::clean_names() |> 
+  filter(!is.na(data_id)) |>
+  rename(tname_alex = transect_name_alex) |> 
+  mutate(year = year(start_date)) |> 
+  select(year, tname_alex, sector, data_id)
 
-
-# download the file where we keep audiomoth deployment info
-drive_find(
-  "Birds_Audio", 
-  shared_drive = "Mosquito Alert Drive", 
-  type = "folder"
-  ) |>
-  drive_ls() |> 
-  filter(name == "AudioMoth") |> 
-  drive_download(
-    path = here("Data", "audiomoth_field_data.xlsx"), 
-    overwrite = T
+audiomoths |> 
+  group_split(tname_alex, year) |> 
+  map(~{
+    
+    transect_name <- unique(.x$tname_alex)
+    year <- unique(.x$year)
+    
+    print(str_c(year, transect_name, "STARTED!", sep = " "))
+    
+    .x$data_id |> 
+      map(~{
+        
+        print(.x)
+        
+        file.path(audiomoth_results, .x) |>  
+          # listing sub-folders for every day
+          list.files(full.names = T) |> 
+          # list the files in each subfolder and load them
+          map(~list.files(.x, full.names = T)) |> 
+          map(~read_tsv(.x, show_col_types = F)) |>
+          bind_rows() |> 
+          janitor::clean_names() |> 
+          mutate(
+            data_id = .x,
+            recording = str_split_i(begin_path, "/", -1), 
+            datetime = as_datetime(
+              str_remove(recording, ".WAV"), format = "%Y%m%d_%H%M%S"
+            )
+          )
+        
+        }
+      ) |> 
+      bind_rows() |> 
+      write_csv(
+        here(
+          birdnet_dir,
+          str_c(
+          year, "_", transect_name, "_complete_data.csv"
+          )
+        )
+      )
+    
+    print(str_c(year, transect_name, "DONE!", sep = " "))
+    
+  }, 
+  .progress = T
   )
+
 
 
