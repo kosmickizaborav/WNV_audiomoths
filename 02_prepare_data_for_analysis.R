@@ -6,10 +6,16 @@
 # INFO --------------------------------------------------------------------
 
 #' **SECTION 1 - Standardizing census data for analysis**
-#' reformating alex tables to be easier for analysis. 
+#' reformatting alex' tables to be easier for analysis. 
 #' 
 #' **SECTION 2 - Gathering results from BirdNet analysis**
-#' downloading the excel where we enter the basic audiomoth field information
+#' gathering all the BirdNet data available for the transect in one file
+#' the results were obtained running this:
+#' python3 /home/nina/BirdNET-Analyzer/analyze.py 
+#' --i /home/nina/Audiomoths/Files --o /home/nina/Audiomoths/Results 
+#' --lat 42.225039 --lon 3.092257
+
+
 
 
 # packages and directories ------------------------------------------------
@@ -42,6 +48,18 @@ years |>
     trans_dirs <- here(census_dir, year) |> 
       list.dirs() 
     
+    calendar <- here(census_dir, year) |> 
+      list.files(pattern = "calendar", full.names = T) |> 
+      read_xlsx(n_max = 10) |> 
+      rename(month = 1) |> 
+      mutate(month = tolower(month)) |> 
+      rename_with(~str_remove(.x, "\\*"), everything()) |> 
+      pivot_longer(
+        cols = -month, 
+        names_to = "trans_official_name", 
+        values_to = "calendar_date"
+      )
+    
     # [-1] to remove the main directory (here(census_dir, year))
     trans_dirs[-1] |> 
       map(~{
@@ -55,6 +73,14 @@ years |>
           map(~{
             
             fname <- .x
+            
+            keys <- fname |> 
+              str_remove(".xlsx") |> 
+              str_replace_all("_", "|") |> reduce(str_c)
+            
+            c_date <- calendar |> 
+              filter(str_detect(month, keys)) |> 
+              filter(str_detect(tolower(trans_official_name), keys))
             
             info <- here(trans_dir, fname) |> 
               read_xlsx(col_names = F) |> 
@@ -78,7 +104,8 @@ years |>
               janitor::clean_names() |> 
               select(any_of(info_cols)) |> 
               # remove extra spaces
-              mutate_all(str_squish)
+              mutate_all(str_squish) |> 
+              bind_cols(c_date)
             
             # loading transect data
             trans_df <- here(trans_dir, fname)|>
@@ -114,8 +141,11 @@ years |>
                 total = sum(count, na.rm = T),
                 .by = c("species", "sector", "banda")
               ) |>
-              bind_cols(info) |> 
-              mutate(trans_official_name = trans_name)
+              mutate(
+                trans_official_name = trans_name, 
+                file = fname
+              ) |> 
+              left_join(info, by = "trans_official_name") 
             
           }
           ) |> 
@@ -155,9 +185,10 @@ audiomoths |>
     .x$data_id |> 
       map(~{
         
-        print(.x)
+        data_id <- .x
+        print(data_id)
         
-        file.path(audiomoth_results, .x) |>  
+        file.path(audiomoth_results, data_id) |>  
           # listing sub-folders for every day
           list.files(full.names = T) |> 
           # list the files in each subfolder and load them
@@ -166,11 +197,13 @@ audiomoths |>
           bind_rows() |> 
           janitor::clean_names() |> 
           mutate(
-            data_id = .x,
+            data_id = data_id,
+            # getting the .WAV file name
             recording = str_split_i(begin_path, "/", -1), 
             datetime = as_datetime(
               str_remove(recording, ".WAV"), format = "%Y%m%d_%H%M%S"
-            )
+            ), 
+            transect_name = transect_name
           )
         
         }

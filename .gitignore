@@ -1,4 +1,6 @@
 .Rproj.user
+.Rhistory
 
 # ignore all files in any directory named build
 Data/
+old_*

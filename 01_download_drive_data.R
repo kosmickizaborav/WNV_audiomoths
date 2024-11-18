@@ -48,6 +48,7 @@ drive_dir <- "BBDD_ALEX_Ocells_Aiguamolls"
 # years of the study to download (subfolders in the main drive folder)
 years <- c("2024")
 
+
 drive_get(drive_dir) |> 
   # list folders in the directory
   drive_ls(type = "folder") |> 
@@ -64,6 +65,17 @@ drive_get(drive_dir) |>
     
     # create the folder for each year
     if(!dir.exists(year_dir)) { year_dir |> dir.create() }
+    
+    # saving the calendar info
+    .x |> 
+      # list only folders in this directory
+      drive_ls(type = "spreadsheet") |> 
+      as_tibble() |> 
+      filter(name == "Calendari censos") |> 
+      drive_download(
+        path = here(census_dir, year, "calendar_census.xlsx"), 
+        overwrite = T
+      )
     
     # list all the transect folders
     .x |> 
