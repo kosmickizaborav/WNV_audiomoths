@@ -95,7 +95,7 @@ species_df_monthly <- census |>
   mutate(month = month_map[month] |> month(label = T)) 
 
 species_df_monthly |> 
-  write_csv(here("Data", "total_counts_audiomoth_vs_census.csv"))
+  write_csv(here("Data", "fede_total_counts_audiomoth_vs_census.csv"))
 
 species_df_monthly <- species_df_monthly |> 
   pivot_longer(
@@ -161,32 +161,33 @@ pal <- c(audiomoth = "#4F3855FF", census = "#9BB655FF", both = "#D89873FF")
     ) + 
     facet_wrap(~month, ncol = 2) +
     theme_bw() +
-    theme(legend.position = "bottom") +
+    theme(
+      legend.position = "bottom"
+     ) +
     labs(
       y = "total number of species detected", 
-      fill = "method"
+      fill = "method", 
+      title = "Total number of species detected by different methods"
     ) + 
     scale_fill_manual(values = pal)
   
-  } |> 
-  #scale_fill_paletteer_d("ggthemes::excel_Office_2007_2010")
-  annotate_figure(
-    top = text_grob(
-      "Total number of species detected by different methods across months and habitats", 
-      face = "bold", size = 12
-      #paste(sp, "- distances |", f_id), face = "bold", size = 12
-    )
-  )
+  } 
+  # #scale_fill_paletteer_d("ggthemes::excel_Office_2007_2010")
+  # annotate_figure(
+  #   top = text_grob(
+  #     "Total number of species detected by different methods across months and habitats", 
+  #     face = "bold", size = 12
+  #     #paste(sp, "- distances |", f_id), face = "bold", size = 12
+  #   )
+  # )
 #paletteer_d("lisa::FridaKahlo")[c(2, 4)]
   
 
-ggsave(here("Data", "fede_total_number_of_species.pdf"), width = 20, units = "cm")
+#ggsave(here("Data", "fede_total_number_of_species.pdf"), width = 20, units = "cm")
 
-
+ggsave(here("Data", "fede_total_number_of_species.jpeg"), width = 20, units = "cm")
 
 # p2 ----------------------------------------------------------------------
-
-
 
 top_5 <- species_df_monthly |> 
   summarize(
@@ -218,21 +219,25 @@ lvs <- top_5 |>
       alpha = .7
     ) + 
     facet_wrap(~habitat, nrow = 1, scales = "free_x") + 
-    labs(x = "times detected") +
+    labs(
+      x = "times detected", 
+      title = "Top 5 most frequently detected species by different methods by habitat"
+      ) +
     theme_bw() + 
     scale_fill_manual(values = pal) +
     #scale_fill_paletteer_d("ggthemes::excel_Office_2007_2010") +
     theme(legend.position = "bottom")
-  } |> 
- annotate_figure(
-   top = text_grob(
-     "Top 5 species by frequency of detection by different methods", 
-     face = "bold", size = 12
-     #paste(sp, "- distances |", f_id), face = "bold", size = 12
-   )
- )
+  } 
+ # annotate_figure(
+ #   top = text_grob(
+ #     "Top 5 most frequently detected species by different methods", 
+ #     face = "bold", size = 12
+ #     #paste(sp, "- distances |", f_id), face = "bold", size = 12
+ #   )
+ # )
  
- ggsave(here("Data", "fede_top_5_species_general.pdf"), width = 25, units = "cm")
+ #ggsave(here("Data", "fede_top_5_species_general.pdf"), width = 25, units = "cm")
+ ggsave(here("Data", "fede_top_5_species_general.jpeg"), width = 25, units = "cm")
  
 
 # p3 ----------------------------------------------------------------------
@@ -257,7 +262,8 @@ lvs <- top_5 |>
      names_to = "total_type",
      values_drop_na = T
    ) |> 
-   mutate(method = str_split_i(total_type, "_", 2))
+   mutate(method = str_split_i(total_type, "_", 2)) |> 
+   distinct(species, method, total, habitat)
  
  lvs <- both_df |> 
    distinct(species)
@@ -274,29 +280,33 @@ lvs <- top_5 |>
        alpha = .7
      ) + 
      facet_wrap(~habitat, nrow = 1, scales = "free_x") + 
-     labs(x = "times detected") +
+     labs(
+       x = "times detected", 
+       title = "Top 5 most frequently detected species registered by both methods by habitat"
+      ) +
      theme_bw() + 
      scale_fill_manual(values = pal) +
      #scale_fill_paletteer_d("ggthemes::excel_Office_2007_2010") +
      theme(legend.position = "bottom")
    
-   } |> 
-   annotate_figure(
-     top = text_grob(
-       "Top 5 species by frequency of detection registered by both methods", 
-       face = "bold", size = 12
-       #paste(sp, "- distances |", f_id), face = "bold", size = 12
-     )
-   )
+   } 
+   # annotate_figure(
+   #   top = text_grob(
+   #     "Top 5 most frequently detected species registered by both methods", 
+   #     face = "bold", size = 12
+   #     #paste(sp, "- distances |", f_id), face = "bold", size = 12
+   #   )
+   # )
  
- ggsave(here("Data", "fede_top_5_species_matching.pdf"), width = 25, units = "cm")
+ #ggsave(here("Data", "fede_top_5_species_matching.pdf"), width = 25, units = "cm")
  
+ ggsave(here("Data", "fede_top_5_species_matching.jpeg"), width = 25, units = "cm")
  
 
 # p4 ----------------------------------------------------------------------
 
 target_sp <- c("Anas platyrhynchos", "Columba livia", 
-               "Turdus merula", "Circus aeruginosus" , "Sturnus vulgaris")
+               "Turdus merula", "Circus aeroginosus" , "Sturnus vulgaris")
  
  
  {
@@ -310,35 +320,37 @@ target_sp <- c("Anas platyrhynchos", "Columba livia",
        .by = c(species, month, method2)
      ) |> 
      ggplot() +
-     geom_bar(
-       aes(y = species, x = total, fill = method2), 
-       stat="identity", 
-       position = position_dodge(),
-       color = "gray33",
-       alpha = 0.7
+     geom_point(
+       aes(y = species, x = total, color = method2), 
+       # stat="identity", 
+       # position = position_dodge(),
+       #color = "gray33",
+       alpha = 0.7, 
+       size = 2
      ) + 
      facet_wrap(~month, ncol = 2, scales = "free_x") +
      theme_bw() +
      theme(legend.position = "bottom") +
      labs(
-       y = "total number of species detected", 
-       fill = "method"
+       x = "times detected", 
+       color = "method", 
+       title = "Performance of different methods for target species"
      ) + 
-     scale_fill_manual(values = pal)
+     scale_color_manual(values = pal)
    
- } |> 
+ } 
    #scale_fill_paletteer_d("ggthemes::excel_Office_2007_2010")
-   annotate_figure(
-     top = text_grob(
-       "Performance of different methods for target species", 
-       face = "bold", size = 12
-       #paste(sp, "- distances |", f_id), face = "bold", size = 12
-     )
-   )
+   # annotate_figure(
+   #   top = text_grob(
+   #     "Performance of different methods for target species", 
+   #     face = "bold", size = 12
+   #     #paste(sp, "- distances |", f_id), face = "bold", size = 12
+   #   )
+   # )
  #paletteer_d("lisa::FridaKahlo")[c(2, 4)]
  
  
- ggsave(here("Data", "fede_target_species.pdf"), width = 20, units = "cm")
+# ggsave(here("Data", "fede_target_species.pdf"), width = 20, units = "cm")
  
- 
+ ggsave(here("Data", "fede_target_species.jpeg"), width = 25, units = "cm")
   

@@ -46,7 +46,7 @@ if(!dir.exists(census_dir) | !dir.exists(birdnet_dir)){
 # folder name on the google drive where Alex uploads the data
 drive_dir <- "BBDD_ALEX_Ocells_Aiguamolls"
 # years of the study to download (subfolders in the main drive folder)
-years <- c("2024")
+years <- c("2023", "2024")
 
 
 drive_get(drive_dir) |> 
@@ -66,16 +66,21 @@ drive_get(drive_dir) |>
     # create the folder for each year
     if(!dir.exists(year_dir)) { year_dir |> dir.create() }
     
-    # saving the calendar info
-    .x |> 
-      # list only folders in this directory
-      drive_ls(type = "spreadsheet") |> 
-      as_tibble() |> 
-      filter(name == "Calendari censos") |> 
-      drive_download(
-        path = here(census_dir, year, "calendar_census.xlsx"), 
-        overwrite = T
-      )
+    if(year == 2024){
+      
+      # saving the calendar info
+      .x |> 
+        # list only folders in this directory
+        drive_ls(type = "spreadsheet") |> 
+        as_tibble() |> 
+        filter(name == "Calendari censos") |> 
+        drive_download(
+          path = here(census_dir, year, "calendar_census.xlsx"), 
+          overwrite = T
+        )
+      
+    }
+   
     
     # list all the transect folders
     .x |> 
@@ -138,14 +143,14 @@ drive_get(drive_dir) |>
 
 # download the file where we keep audiomoth deployment info
 drive_find(
-  "Birds_Audio", 
-  shared_drive = "Mosquito Alert Drive", 
+  "Birds_Audio",
+  shared_drive = "Mosquito Alert Drive",
   type = "folder"
   ) |>
-  drive_ls() |> 
-  filter(name == "AudioMoth") |> 
+  drive_ls() |>
+  filter(name == "AudioMoth") |>
   drive_download(
-    path = here(birdnet_dir, "audiomoth_field_data.xlsx"), 
+    path = here(birdnet_dir, "audiomoth_field_data.xlsx"),
     overwrite = T
   )
 
