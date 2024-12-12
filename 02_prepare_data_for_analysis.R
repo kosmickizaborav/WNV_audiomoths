@@ -139,7 +139,7 @@ years |>
               ) |>
               summarise(
                 total = sum(count, na.rm = T),
-                .by = c("species", "sector", "banda")
+                .by = any_of(c("species", "sector", "banda"))
               ) |>
               mutate(
                 trans_official_name = trans_name, 
@@ -159,6 +159,7 @@ years |>
             )
       }
       )
+    print(paste(year, "DONE!"))
   }
   )
 

@@ -45,16 +45,17 @@ if(!dir.exists(census_dir) | !dir.exists(birdnet_dir)){
 
 # folder name on the google drive where Alex uploads the data
 drive_dir <- "BBDD_ALEX_Ocells_Aiguamolls"
-# years of the study to download (subfolders in the main drive folder)
-years <- c("2023", "2024")
+# years of the study to download (sub-folders in the main drive folder)
+years <- c(2023, 2024)
 
 
 drive_get(drive_dir) |> 
   # list folders in the directory
   drive_ls(type = "folder") |> 
   as_tibble() |> 
-  # selecting only the years of interest (for now only 2024)
-  filter(name %in% years) |> 
+  # selecting only the years of interest 
+  # for now the script is optimized for 2023 and 2024
+  filter(name %in% as.character(years)) |> 
   # split by year
   group_split(name) |> 
   map(~{
@@ -66,6 +67,9 @@ drive_get(drive_dir) |>
     # create the folder for each year
     if(!dir.exists(year_dir)) { year_dir |> dir.create() }
     
+    
+    # only in the 2024 data there was an excel file with 
+    # names of the transects and months, so it was also downloaded
     if(year == 2024){
       
       # saving the calendar info
@@ -114,16 +118,20 @@ drive_get(drive_dir) |>
       group_split(name) |> 
       map(~{
         
-        f_name <- .x$name |> 
-          str_remove(".xlsx") |> 
-          janitor::make_clean_names() |> 
+        f_name <- .x$name |>
+          str_remove(".xlsx") |>
+          janitor::make_clean_names() |>
           # correcting some typos
           str_replace_all(c(
-            "cens0" = "cens_0", 
-            "sacara" = "sacra", 
+            "cens0" = "cens_0",
+            "sacara" = "sacra",
             "vila_sacra" = "vilasacra"
             )
-          )
+          ) |> 
+          str_remove_all("202[0-9]") |> 
+          str_replace_all("_", " ") |> 
+          str_squish() |> 
+          str_replace_all(" ", "_")
         
         drive_download(
           .x, 
@@ -132,6 +140,8 @@ drive_get(drive_dir) |>
         )
         
       })
+    
+    print(paste(year, "DONE!"))
     
   }) 
 
