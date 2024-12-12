@@ -123,47 +123,6 @@ check <- years |>
               mutate_all(str_squish) |>
               mutate(trans_official_name = trans_name)
 
-              bind_cols(c_date)
-            
-            # loading transect data
-            trans_df <- here(trans_dir, fname)|>
-              # skip info columns
-              read_xlsx(skip = 5) |>
-              janitor::clean_names() |>
-              rename(total_radius = x15, total_transect = x16) |>
-              select(-starts_with("total")) |>
-              filter(row_number() != 1) |>
-              # to remove extra NA fields that sometimes occur in the excel
-              # e.g. they have banda value but nothing else
-              # also so that I can do species below
-              filter(row_number() <= max(which(!is.na(especie))+2)) |>
-              # for each species there are 3 rows, 
-              # indicating the distance of detection, 
-              # but they are not explicitly written
-              mutate(
-                species = rep(especie[which(!is.na(especie))], each = 3)
-              ) |>
-              # these are the columns for the sector
-              pivot_longer(
-                cols = 3:14, names_to = "sector", values_to = "count"
-              ) |>
-              mutate(
-                count = as.numeric(count),
-                # if it contains s, it is mascla, otherwise the column name is x_,
-                # it's a by_product of how alex's table is structured
-                bird_cat = if_else(str_detect(sector, "s"), "mascla", "altra"),
-                # renaming x_ with the adequate segment names
-                sector = str_replace_all(sector,  repl)
-              ) |>
-              summarise(
-                total = sum(count, na.rm = T),
-                .by = any_of(c("species", "sector", "banda"))
-              ) |>
-              mutate(
-                trans_official_name = trans_name, 
-                file = fname
-              ) |> 
-              left_join(info, by = "trans_official_name") 
             
             if(year == 2024){
 
