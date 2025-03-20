@@ -36,3 +36,31 @@ pnae <- here("Data", "Llista-PNAE-v5.0.-11-25.xlsx") |>
   filter(!is.na(species))
 
   
+  # file for frederica
+
+  df <- census_dir |>
+    list.files(pattern = ".csv", full.names = T) |>
+    map(~{
+      .x |> 
+        read_csv(show_col_types = F) |> 
+        mutate(data = ifelse(is.na(data), calendar_date, data)) |> 
+        select(trans_official_name, species, sector, data, total)
+    }) |> 
+    list_rbind() |> 
+    filter(total > 0) |> 
+    summarize(
+      total_count = sum(total), 
+      .by = c(trans_official_name, species, data)
+    ) |>
+    mutate(
+      data = as.Date(data, format = "%d/%m/%Y"), 
+      year = year(data)
+    ) |> 
+    rename(date = data) |> 
+    select(year, everything())
+  
+  
+  df |> 
+    write_csv(here("Data", "Census_data_summary_for_Fatima.csv"))
+  
+  

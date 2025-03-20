@@ -133,11 +133,6 @@ check <- years |>
               info <- info |>
                 left_join(c_date, by = "trans_official_name")
 
-            }
-
-
-            if(year == 2024){
-
               # loading transect data
               trans_df <- here(trans_dir, fname)|>
                 # skip info columns
@@ -216,9 +211,10 @@ check <- years |>
                 ) |>
                 left_join(info, by = "trans_official_name")
             }
+            
+            trans_df
 
-          }
-          ) |> 
+          }) |> 
           bind_rows() |> 
           write_csv(
             here(
