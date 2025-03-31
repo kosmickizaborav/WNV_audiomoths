@@ -7,13 +7,14 @@ library(EMbC)
 library(ggrepel)
 library(ggridges)
 library(scales)
+source(here("00_functions.R"))
 
 
 gdir <- here("Data", "Graphs")
 if(!dir.exists(gdir)){ dir.create(gdir) }
 
 birdnet_dir <- here("Data", "Birdnet")
-audiomoth_results <- "/home/nina/Audiomoths/Results"
+census_dir <- here("Data", "Census")
 
 
 # 0 - Data preparation ----------------------------------------------------
@@ -34,6 +35,7 @@ abundance_df <- here("Data", "llista_abundancia_julia.xlsx") |>
     scientific_name = case_when(
       atlas_name == "Sylvia melanocephala" ~ "Curruca melanocephala",
       atlas_name == "Sylvia hortensis" ~ "Curruca hortensis",
+      atlas_name == "Sylvia cantillans" ~ "Curruca iberiae",
       .default = atlas_name
     )
   ) |> 
@@ -62,7 +64,8 @@ am_df <- birdnet_dir |>
   # missing species: 
   # "Charadrius alexandrinus" - present in sp_cortalet just not detected
   # "Egretta garzetta" - present in sp_cortalet just not detected  
-  # "Sylvia cantillans" - not present in sp_cortalet, not sure about the synonym   
+  # "Sylvia cantillans" - not present in sp_cortalet, with Fede we found the synonym
+  # Curruca iberiae  
   left_join(abundance_df, by = "scientific_name") |> 
   arrange(
     desc(abundance), 
@@ -76,7 +79,47 @@ am_df <- birdnet_dir |>
     )
   )
 
+# Alex's transect data 
+alex_counts <- census_dir |> 
+  list.files(pattern = "2024_", full.names = T) |> 
+  map(~read_csv(., show_col_types = F)) |> 
+  list_rbind() |> 
+  filter(total > 0) |> 
+  select(species, total, trans_official_name) |> 
+  mutate(
+    species = str_remove_all(species, "[0-9[:punct:]]") |> str_squish()
+  ) |> 
+  filter(!str_detect(species, " sp$"), str_count(species, " ") == 1) |> 
+  # what is this
+  # Cyanecula cyaneus
+  # Periparus cyaneus
+  # 
+  mutate(
+    species = case_when(
+      species == "Sylvia melanocephala" ~ "Curruca melanocephala",
+      species == "Cyaneus caeruleus" ~ "Cyanistes caeruleus",
+      species == "Parus caeruleus" ~ "Cyanistes caeruleus",
+      species == "Psittacula monachus" ~ "Myiopsitta monachus",
+      .default = species
+    )
+  ) |> 
+  check_birdlife(species) |> 
+  mutate(
+    scientific_name = if_else(
+      name_type == "synonym", alternative_for_synonym, birdlife_name
+    )
+  ) |> 
+  select(scientific_name, total, trans_official_name) |> 
+  summarize(
+    total = sum(total), 
+    .by = c(scientific_name, trans_official_name)
+  )
+
+  
+
 rm(abundance_df, sp_cortalet)
+
+
 
 
 # FUNCTION: plot_heat_counts ----------------------------------------------
@@ -391,4 +434,9 @@ am_df_sub |>
 # 
 # bcsmth_1 <- smth(bc)
 # save(bcsmth_1, file = file.path(out, "EMBC_output_smth_dlta_1.RData")) 
+
+
+
+# 5 - Compare species -----------------------------------------------------
+
 
