@@ -4,3 +4,4 @@
 # ignore all files in any directory named build
 Data/
 old_*
+Handbook*

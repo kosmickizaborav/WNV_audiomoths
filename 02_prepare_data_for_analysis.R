@@ -25,6 +25,7 @@
 library(tidyverse)
 library(here)
 library(readxl)
+source(here("00_functions.R"))
 
 # folder name where the data will be downloaded
 census_dir <- here("Data", "Census")
@@ -43,8 +44,8 @@ repl <- c("x4" = "s1", "x6" = "s2", "x8" = "s3", "x10" = "s4", "x12" = "s5",
           "x14" = "s6")
 
 
-check <- years |> 
-  map(~{
+years |> 
+  walk(~{
     
     year <- .x 
     
@@ -69,7 +70,7 @@ check <- years |>
     
     # [-1] to remove the main directory (here(census_dir, year))
     trans_dirs[-1] |> 
-      map(~{
+      walk(~{
         
         trans_dir <- .x 
         
@@ -216,6 +217,10 @@ check <- years |>
 
           }) |> 
           bind_rows() |> 
+          mutate(
+            species = str_remove_all(species, "[0-9[:punct:]]") |> str_squish()
+          ) |> 
+          check_birdlife(species) |> 
           write_csv(
             here(
               census_dir,
