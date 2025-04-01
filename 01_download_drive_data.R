@@ -5,19 +5,18 @@
 
 # INFO --------------------------------------------------------------------
 
-#' **SECTION 1 - Downloading census files from Google drive** 
-#' download census data from Alex. All data is located in the folder
+#' **SECTION 1 - List all files from drive** 
+#' get list of all files that we want to download from drive. 
+#' Alex' census data is located in the folder
 #' "BBDD_ALEX_Ocells_Aiguamolls", organized by year and transect.
-#' kept the same structure when downloading. 
 #' 
-#' **SECTION 2 - Standardizing census data for analysis**
-#' reformatting alex tables to be easier for analysis. 
+#' **SECTION 2 - Download Alex data**
+#' download alex census data
 #' 
-#' **SECTION 2 - Downloading audiomoth fieldsheet**
+#' **SECTION 3 - Download audiomoth fieldsheet**
 #' downloading the excel where we enter the basic audiomoth field information
 
-
-# packages and directories ------------------------------------------------
+# 0 - Packages and directories --------------------------------------------
 
 library(tidyverse)
 library(here)
@@ -29,19 +28,22 @@ drive_auth("ninaupupina@gmail.com")
 
 
 # folder name where the data will be downloaded
-census_dir <- here("Data", "Census")
-birdnet_dir <- here("Data", "Birdnet")
+data_dir <- here("Data")
+census_dir <- file.path(data_dir, "Census")
+birdnet_dir <- file.path(data_dir,"Birdnet")
 
 if(!dir.exists(census_dir) | !dir.exists(birdnet_dir)){
   
-  if(!dir.exists(here("Data"))) { here("Data") |> dir.create() }
+  if(!dir.exists(data_dir)) { data_dir |> dir.create() }
   
   census_dir |> dir.create()
   birdnet_dir |> dir.create()
   
 }
 
-# 1 - Downloading census files from Google drive-------------------------------
+
+# 1 - List all files from drive -------------------------------------------
+
 
 # folder name on the google drive where Alex uploads the data
 drive_dir <- "BBDD_ALEX_Ocells_Aiguamolls"
@@ -49,103 +51,90 @@ drive_dir <- "BBDD_ALEX_Ocells_Aiguamolls"
 years <- c(2023, 2024)
 
 
-drive_get(drive_dir) |> 
-  # list folders in the directory
+# get all the files listed from drive
+data_list <- drive_get(drive_dir) |> 
+  # data organizes in years
   drive_ls(type = "folder") |> 
-  as_tibble() |> 
-  # selecting only the years of interest 
-  # for now the script is optimized for 2023 and 2024
-  filter(name %in% as.character(years)) |> 
-  # split by year
-  group_split(name) |> 
+  mutate(year = name) |> 
+  group_split(year) |> 
   map(~{
     
-    year <- unique(.x$name)
-      
-    year_dir <- here(census_dir, year)
+    year_data <- .x
     
-    # create the folder for each year
-    if(!dir.exists(year_dir)) { year_dir |> dir.create() }
-    
-    
-    # only in the 2024 data there was an excel file with 
-    # names of the transects and months, so it was also downloaded
-    if(year == 2024){
-      
-      # saving the calendar info
-      .x |> 
-        # list only folders in this directory
-        drive_ls(type = "spreadsheet") |> 
-        as_tibble() |> 
-        filter(name == "Calendari censos") |> 
-        drive_download(
-          path = here(census_dir, year, "calendar_census.xlsx"), 
-          overwrite = T
-        )
-      
-    }
-   
-    
-    # list all the transect folders
-    .x |> 
-      # list only folders in this directory
+    # year folders organized in
+    year_data |> 
       drive_ls(type = "folder") |> 
-      as_tibble() |> 
-      mutate(year = year)
-    
-  }) |> 
-  bind_rows() |> 
-  # split by transect folder
-  group_split(name) |> 
-  map(~{
-    
-    transect <- unique(.x$name)
-    year <- unique(.x$year)
-    
-    # create a folder for each transect
-    trans_dir <- here(census_dir, year, transect)
-    
-    if(!dir.exists(trans_dir)) { trans_dir |> dir.create() }
-    
-    # list the files within each transect folder and download the data
-    .x |> 
-      # list all the excels present in the transect folder
-      drive_ls(type = "xlsx") |> 
-      as_tibble() |> 
-      mutate(year = year) |> 
-      bind_rows() |> 
-      # split by the excell file
-      group_split(name) |> 
+      mutate(transect_folder = name) |> 
+      group_split(transect_folder) |> 
       map(~{
+        transect_data <- .x
         
-        f_name <- .x$name |>
-          str_remove(".xlsx") |>
-          janitor::make_clean_names() |>
-          # correcting some typos
-          str_replace_all(c(
-            "cens0" = "cens_0",
-            "sacara" = "sacra",
-            "vila_sacra" = "vilasacra"
-            )
-          ) |> 
-          str_remove_all("202[0-9]") |> 
-          str_replace_all("_", " ") |> 
-          str_squish() |> 
-          str_replace_all(" ", "_")
+        transect_data |> 
+          drive_ls(type = "xlsx") |> 
+          as_tibble() |> 
+          mutate(transect_folder = unique(transect_data$transect_folder))
         
-        drive_download(
-          .x, 
-          path = here(trans_dir, str_c(.x$year, "_", f_name, ".xlsx")), 
-          overwrite = T
-        )
+      }) |>
+      list_rbind() |> 
+      bind_rows(drive_ls(year_data, type = "spreadsheet")) |>
+      mutate(year = unique(year_data$year)) 
+  }) |> 
+  list_rbind()
+
+# modifying the names of the data so that they are neatly organized
+months <- c(
+  "gener", "febrer", "març", "abril", "maig", "juny", 
+  "juliol", "agost", "setembre", "octubre", "novembre", "desembre"
+) |> str_c(collapse = "|")
+
+data_list <- data_list |> 
+  mutate(
+    # checked they are 5 unique with this correction
+    transect = str_remove_all(transect_folder, " ") |> 
+      str_replace_all("[:punct:]", "_"), 
+    month = str_extract(str_to_lower(name), months), 
+    file_name = str_c(str_c(transect, year, month, sep = "_"), ".xlsx"), 
+    file_name = ifelse(
+      is.na(file_name), 
+      str_replace_all(name, "[:punct:]|xlsx", " ") |> 
+        str_squish() |> str_replace_all(" ", "_") |> str_c(".xlsx"), 
+      file_name
+    )
+  ) |> 
+  select(-transect_folder)
+
+data_list |> 
+  write_csv(file.path(data_dir, "01_files_downloaded_from_drive.csv"))
+
+
+# 2 - Download Alex data -----------------------------------------------------
+
+data_list |> 
+  group_split(year) |> 
+  walk(~{
+    
+    data_list_year <- .x 
+    
+    year_folder <- file.path(census_dir, unique(data_list_year$year))
+    
+    if(!dir.exists(year_folder)) { dir.create(year_folder) }
+    
+    data_list_year |> 
+      group_split(file_name) |> 
+      walk(~{
+        
+        file_info <- .x 
+        fout <- file_info$file_name
+        
+        file_info |> 
+          drive_download(
+            path = file.path(year_folder, fout), 
+            overwrite = T
+          )
         
       })
     
-    print(paste(year, "DONE!"))
-    
-  }) 
-
-
+  })
 
 
 # 2 - Downloading audiomoth field-sheet ------------------------------------
