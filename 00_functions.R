@@ -37,7 +37,7 @@ match_names <- function(
 
 
 check_birdlife <- function(
-    df, species_name, maxDist = 3, synonyms_to_sci_names = F
+    df, species_name, max_d = 3, synonyms_to_sci_names = F
     ) {
   
   # downloaded from: 
