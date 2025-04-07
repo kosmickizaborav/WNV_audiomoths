@@ -47,8 +47,8 @@ check_birdlife <- function(
   birdlife <- here(bird_file) |> 
     read_xlsx(skip = 2) |> 
     # take only the species level, not subspecies
-    filter(!is.na(SISRecID)) |> 
     janitor::clean_names() |> 
+    filter(!is.na(subsp_seq)) |> 
     select(scientific_name, synonyms, family_name) |> 
     # remove genus in parenthesis if provided
     mutate(synonyms = str_remove_all(synonyms, "\\([^\\)]*\\)")) |> 
