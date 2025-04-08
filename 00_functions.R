@@ -87,9 +87,19 @@ check_birdlife <- function(df, species_name, max_d = 3, birdnet_check = T) {
         scientific_name == "Larus melanocephalus" ~ "Ichthyaetus melanocephalus",
         scientific_name == "Larus genei" ~ "Chroicocephalus genei",
         scientific_name == "Larus audouinii" ~ "Ichthyaetus audouinii",
-        scientific_name == "Curruca melanocephala" ~ "Sylvia melanocephala", 
-        scientific_name == "Curruca hortensis" ~ "Sylvia hortensis" ,
+        scientific_name == "Corvus monedula" ~ "Coloeus monedula", 
         .default = synonyms
+      ), 
+      synonyms = if_else(
+        str_detect(scientific_name, "Curruca") & is.na(synonyms), 
+        paste("Sylvia", str_split_i(scientific_name, " ", 2)), 
+        synonyms
+      )
+    ) |> 
+    bind_rows(
+      tribble(
+        ~scientific_name, ~synonyms, ~family_name, ~sp_status,
+        "Curruca curruca", "Sylvia curruca", "Sylviidae", "R"
       )
     ) |> 
     # check how many times the species appears, 

@@ -222,7 +222,7 @@ transect_info |>
   write_rds(file.path(census_dir, "2024_complete_data.rds"))
 
 
-# 2 - Prepare transect files 2023----------------------------------------------
+# 3 - Prepare transect files 2023----------------------------------------------
 
 
 transect_info |> 
@@ -284,33 +284,14 @@ transect_info |>
   select(-species_corr) |> 
   write_rds(file.path(census_dir, "2023_complete_data.rds"))
 
-# 2 - Gathering BirdNet results -----------------------------------------------
+# 4 - Gathering BirdNet results -----------------------------------------------
 
 sp_cortalet <- file.path(data_dir, "species_cortalet.txt") |> 
   read_delim(
-    col_names = c("birdnet_scientific_name", "birdnet_common_name"), 
+    col_names = c("scientific_name", "common_name"), 
     delim = "_", 
     show_col_types = F
-  ) |> 
-  check_birdlife(birdnet_scientific_name) |> 
-  mutate(
-    birdlife_name = if_else(
-      name_type == "synonyms", alternative_for_synonym, birdlife_name
-    )
-  ) |> 
-  select(-alternative_for_synonym) |>
-  mutate(
-    scientific_name = if_else(
-      is.na(birdlife_name), birdnet_scientific_name, birdlife_name
-    )
   )
-
-sp_cortalet |> 
-  write_csv(file.path(birdnet_dir, "02_species_cortalet_to_birdlife.csv"))
-
-sp_cortalet <- sp_cortalet |> 
-  rename(common_name = birdnet_common_name) |> 
-  select(scientific_name, common_name) 
             
 audiomoths <- here(birdnet_dir, "audiomoth_field_data.xlsx")|> 
   read_xlsx() |> 
@@ -370,3 +351,67 @@ audiomoths |>
     print(paste(year, "DONE!"))
     
   })
+
+
+# 5 - Prepare abundance file ----------------------------------------------
+
+# aiguamolls abundance files, downloaded from:
+# https://acrobat.adobe.com/id/urn:aaid:sc:EU:6e6ba7bd-a979-44e5-aadb-7b51b6489701
+# transformed by adone to excel
+# (R) Resident = Espècie sedentària i reproductora, amb possibles moviments dispersius fora del període de nidificació. 
+# (V) Visitant = Espècie no reproductora observable durant tot l'any, a partir d'exemplars residents en àrees poc o molt properes. 
+# (E) Estival = Espècie reproductora present només durant el període de nidificació.  
+# (Eu) Estiuejant = Espècie no reproductora present només durant el període de nidificació. S’inclouen també les espècies que utilitzen el PNAE i/o la badia de Roses com a zones d’alimentació durant la seva reproducció en àrees poc o molt properes. 
+# (H) Hivernant = Espècie present durant el període d'hivernada, de manera estable o en trànsit. 
+# (M) Migrant = Espècie present durant els períodes migratoris. S'inclouen també les espècies que arriben en dispersió al PNAE i/o la badia de Roses abans o després de la seva reproducció en àrees poc o molt properes. 
+# Els valors utilitzats per a concretar el grau d’abundància de les espècies serien els següents:  
+# (0) Extingit = Espècie extingida en la categoria fenològica indicada. 
+# (1) Accidental = Espècie amb un màxim de 10 citacions -d’un o més exemplars- en la categoria fenològica indicada. Si es tracta d’ocells reproductors, es considera l’existència de menys de 5 episodis de cria comprovats, protagonitzats per parelles aïllades o per més parelles si es tracta de colònies. 
+# (2) Molt escàs = Espècie de presència anual o quasi anual, habitualment amb menys de 10 exemplars, però a vegades amb alguna desena d’exemplars en la categoria fenològica indicada.   
+# (3) Escàs = Espècie amb presència anual de desenes o, a vegades, algun centenar d'exemplars en la categoria fenològica indicada. 
+# (4) Comú = Espècie amb presència anual de centenars o, a vegades, algun miler d'exemplars en la categoria fenològica indicada. 
+# (5) Abundant = Espècie amb presència anual de milers d'exemplars en la categoria fenològica indicada. 
+
+file.path(data_dir, "Llista-PNAE-v5.0.-11-25.xlsx") |> 
+  read_xlsx(skip = 1) |> 
+  janitor::clean_names() |> 
+  rename(scientific_name = x2) |> 
+  filter(!is.na(scientific_name)) |> 
+  select(scientific_name, r, v, e, eu, h, m) |> 
+  pivot_longer(
+    cols = -scientific_name, 
+    names_to = "category", 
+    values_to = "abundance", 
+    values_drop_na = T
+  ) |> 
+  mutate(
+    category_english = case_when(
+      category == "r" ~ "resident", 
+      category == "v" ~ "visitor",
+      category == "e" ~ "reproducing",
+      category == "eu" ~ "summer visitor",
+      category == "h" ~ "wintering",
+      category == "m" ~ "migrating"
+    ),
+    category = case_when(
+      category == "r" ~ "resident", 
+      category == "v" ~ "visitant",
+      category == "e" ~ "estival",
+      category == "eu" ~ "estiuejant",
+      category == "h" ~ "hivernant",
+      category == "m" ~ "migrant"
+    ), 
+    abundance_eng = case_when(
+      abundance == 0 ~ "extinct",
+      abundance == 1 ~ "accidental",
+      abundance == 2 ~ "very rare",
+      abundance == 3 ~ "rare",
+      abundance == 4 ~ "common",
+      abundance == 5 ~ "abundant"
+    )
+  ) |> 
+  write_csv(file.path(data_dir, "02_augamolls_species_abundance.csv"))
+  
+
+
+
