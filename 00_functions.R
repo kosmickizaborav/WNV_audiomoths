@@ -34,7 +34,7 @@ match_names <- function(
 
 check_birdlife <- function(df, species_name, max_d = 3, birdnet_check = T) {
   
-  # obtained from BirdNet Analyser files in section Data
+  # obtained from BirdNet Analyser files in the section Data
   birdnet_sp <- here("BirdNET_GLOBAL_6K_V2.4_Labels.txt") |> 
     read_delim(
       col_names = c("scientific_name", "common_name"), 
@@ -153,7 +153,17 @@ check_birdlife <- function(df, species_name, max_d = 3, birdnet_check = T) {
         synonym %in% birdnet_sp ~ synonym,
         .default = NA
       )
+    ) |> 
+    # didn't have capacity to think about how to do it in one step
+    mutate(
+      birdnet_name = ifelse(
+        all(is.na(birdnet_name)), 
+        NA, 
+        unique(birdnet_name[!is.na(birdnet_name)])
+      ),
+      .by = scientific_name
     )
+  
   
   # extract all the names and synonyms in one table
   bln <- birdlife |> 

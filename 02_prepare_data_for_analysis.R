@@ -19,12 +19,16 @@
 #' gather all information for that year in one file. 
 #' done for the two years separately because the data format is not identical
 #' 
-#' **SECTION 2 - Gather irdNet results**
+#' **SECTION 4 - Gather BirdNet results**
 #' gathering all the BirdNet data available for the year in one file
 #' the results were obtained running this:
 #' python3 /home/nina/BirdNET-Analyzer/analyze.py 
 #' --i /home/nina/Audiomoths/Files --o /home/nina/Audiomoths/Results 
 #' --lat 42.225039 --lon 3.092257
+#' 
+#' **SECTION 5 - Prepare abundance PNAE file**
+#' extract relevant info from the report on the abundance and seasonality of 
+#' birds in PNAE
 
 # 0 - Packages and directories --------------------------------------------
 
@@ -284,7 +288,7 @@ transect_info |>
   select(-species_corr) |> 
   write_rds(file.path(census_dir, "2023_complete_data.rds"))
 
-# 4 - Gathering BirdNet results -----------------------------------------------
+# 4 - Gather BirdNet results ---------------------------------------------------
 
 sp_cortalet <- file.path(data_dir, "species_cortalet.txt") |> 
   read_delim(
@@ -356,6 +360,7 @@ audiomoths |>
 # 5 - Prepare abundance file ----------------------------------------------
 
 # aiguamolls abundance files, downloaded from:
+# http://ww1.birdingemporda.com/
 # https://acrobat.adobe.com/id/urn:aaid:sc:EU:6e6ba7bd-a979-44e5-aadb-7b51b6489701
 # transformed by adone to excel
 # (R) Resident = Espècie sedentària i reproductora, amb possibles moviments dispersius fora del període de nidificació. 
@@ -385,7 +390,7 @@ file.path(data_dir, "Llista-PNAE-v5.0.-11-25.xlsx") |>
     values_drop_na = T
   ) |> 
   mutate(
-    category_english = case_when(
+    category_eng = case_when(
       category == "r" ~ "resident", 
       category == "v" ~ "visitor",
       category == "e" ~ "reproducing",
