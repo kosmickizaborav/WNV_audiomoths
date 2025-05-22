@@ -18,7 +18,7 @@ loc.fig <- paste0(getwd(), "/FIGURES/Exploratory/")
 audios_data <- readRDS(file = paste0(loc.out, "audios_raw_data.txt"))
 
 audios <- audios_data %>%
-  # filter(confidence > 0.8) %>%
+  filter(confidence > 0.8) %>%
   mutate(id = substr(id, 1, 14),
          habitat = substr(id, 1, 2), 
          transect = substr(transect, 1, 2),
@@ -299,7 +299,7 @@ config_data <- readRDS(file = paste0(loc.out, "audios_config_data.txt"))
 audios <- merge(audios, config_data, by = "id", all.x = TRUE)
 
 vai_week <- audios %>%
-  # filter(confidence > 0.8) %>%
+  filter(confidence > 0.8) %>%
   filter(common_name != "nocall") %>%  
   group_by(transect, transect_code, scientific_name, month) %>%
   reframe(
@@ -357,7 +357,7 @@ ggplot(abundance_comparison, aes(x = method_census, y = n_census, fill = "Census
 # Some estimates (no realible) for comparing -----------------------------------
 estimates <- data.frame()
 estimates <- rbind(estimates, # Calculating by hand, it is not automaticed
-c("Anas platyrhynchos"     , 3715  , 2076   , 1710  , 3.069),
+c("Anas platyrhynchos"      , 3715  , 2076   , 1710  , 3.069),
 c("Sturnus vulgaris"        , 4025  , 2889   , 816   , 1.746),
 c("Turdus merula"           , 138   , 927    , 12225 , 3.440),
 c("Larus michahellis"       , 608   , 939    , 516   , 0.824),
