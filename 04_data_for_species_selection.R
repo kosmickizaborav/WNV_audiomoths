@@ -199,7 +199,7 @@ audio_df <- file.path(birdnet_dir, fin) |>
     starts_with("total"), 
     contains("_atlas"), 
     contains("_pnae"), 
-    contains("_prevalence$"), 
+    matches("_prevalence$"), 
     starts_with("conf_"), 
     everything()
   ) |> 
