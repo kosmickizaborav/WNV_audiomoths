@@ -3,7 +3,6 @@ library(readxl)
 library(here)
 library(stringdist)
 
-
 # 1 - FUNCTION: match_names -----------------------------------------------
 
 # small function for matching scientific names in case of typos 
@@ -32,7 +31,8 @@ match_names <- function(
 # FUNCTION: check_birdlife ------------------------------------------------
 
 
-check_birdlife <- function(df, species_name, max_d = 3, birdnet_check = T) {
+check_birdlife <- function(
+    df, species_name, max_d = 3, birdnet_check = T, add_family = F) {
   
   # obtained from BirdNet Analyser files in the section Data
   birdnet_sp <- here("BirdNET_GLOBAL_6K_V2.4_Labels.txt") |> 
@@ -53,6 +53,7 @@ check_birdlife <- function(df, species_name, max_d = 3, birdnet_check = T) {
     janitor::clean_names() |> 
     rename(sp_status = x2024_iucn_red_list_category) |> 
     select(seq, scientific_name, synonyms, family_name, sp_status) |> 
+    rename(family = family_name) |> 
     filter(!is.na(seq)) |> 
     distinct(seq, .keep_all = T) |> 
     # remove information in parenthesis is added to the synonyms column
@@ -78,7 +79,7 @@ check_birdlife <- function(df, species_name, max_d = 3, birdnet_check = T) {
       # change the status to NR - not recognized and R - regonized
       sp_status = if_else(sp_status == "NR", "NR", "R")
     ) |> 
-    distinct(scientific_name, synonyms, family_name, sp_status, .keep_all = T) |> 
+    distinct(scientific_name, synonyms, family, sp_status, .keep_all = T) |> 
     mutate(
       # checked that they don't have any synonyms, so I just manually added them
       synonyms = case_when(
@@ -98,7 +99,7 @@ check_birdlife <- function(df, species_name, max_d = 3, birdnet_check = T) {
     ) |> 
     bind_rows(
       tribble(
-        ~scientific_name, ~synonyms, ~family_name, ~sp_status,
+        ~scientific_name, ~synonyms, ~family, ~sp_status,
         "Curruca curruca", "Sylvia curruca", "Sylviidae", "R"
       )
     ) |> 
@@ -143,7 +144,7 @@ check_birdlife <- function(df, species_name, max_d = 3, birdnet_check = T) {
       !(n() > 1 & n_distinct(synonyms, na.rm = T) > 0 & is.na(synonyms)), 
       .by = scientific_name
     ) |> 
-    select(scientific_name, synonyms, family_name, sp_status) |>
+    select(scientific_name, synonyms, family, sp_status) |>
     # assign a id number just for easier organization
     mutate(sp_id = 1:n()) |> 
     rename(synonym = synonyms) |> 
@@ -191,10 +192,10 @@ check_birdlife <- function(df, species_name, max_d = 3, birdnet_check = T) {
   
   # extract genus and family names
   bln_gens <- bln |> 
-    distinct(gen, family_name) |> 
-    mutate(str_sim = stringsim(gen, family_name)) |> 
+    distinct(gen, family) |> 
+    mutate(str_sim = stringsim(gen, family)) |> 
     filter(n() == 1 | str_sim == max(str_sim), .by = gen) |> 
-    distinct(gen, family_name)
+    distinct(gen, family)
   
   # copy the species name column from the original data for easier manipulation
   df <- df |> 
@@ -235,10 +236,10 @@ check_birdlife <- function(df, species_name, max_d = 3, birdnet_check = T) {
     # add family name for the last correction
     left_join(
       bln_gens |> 
-        select(gen, family_name),
+        select(gen, family),
       by = c("genus" = "gen")
     ) |> 
-    select(spn, spn_corr, sp_id, family_name) 
+    select(spn, spn_corr, sp_id, family) 
   
   # if no match was found in the previous correction, match the genus, and
   # search within the family for the species
@@ -246,7 +247,7 @@ check_birdlife <- function(df, species_name, max_d = 3, birdnet_check = T) {
     filter(is.na(spn_corr)) |> 
     mutate(
       spn_corr = match_names(
-          spn, birdlife$scientific_name[birdlife$family_name == family_name], 
+          spn, birdlife$scientific_name[birdlife$family == family], 
           maxDist = max_d
       ),
       .by = spn
@@ -311,7 +312,16 @@ check_birdlife <- function(df, species_name, max_d = 3, birdnet_check = T) {
     
     df <- df |> 
       mutate(
-        birdnet_name = birdlife$birdnet_name[match(birdlife_name, birdlife$scientific_name)], 
+        birdnet_name = birdlife$birdnet_name[match(birdlife_name, birdlife$scientific_name)]
+      )
+    
+  }
+  
+  if(add_family){
+    
+    df <- df |> 
+      mutate(
+        family = birdlife$family[match(birdlife_name, birdlife$scientific_name)]
       )
     
   }

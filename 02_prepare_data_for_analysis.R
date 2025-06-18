@@ -377,7 +377,7 @@ audiomoths |>
 # (4) Comú = Espècie amb presència anual de centenars o, a vegades, algun miler d'exemplars en la categoria fenològica indicada. 
 # (5) Abundant = Espècie amb presència anual de milers d'exemplars en la categoria fenològica indicada. 
 
-file.path(data_dir, "Llista-PNAE-v5.0.-11-25.xlsx") |> 
+here("Llista-PNAE-v5.0.-11-25.xlsx") |> 
   read_xlsx(skip = 1) |> 
   janitor::clean_names() |> 
   rename(scientific_name = x2) |> 

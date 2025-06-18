@@ -185,7 +185,7 @@ rm(sp_cortalet, abundance_df, abundance_aiguamolls)
 
 # 2 - BirdNet confidence quantiles----------------------------------------------
 
-audio_df <- file.path(birdnet_dir, fin) |>
+audio_df2 <- file.path(birdnet_dir, fin) |>
   read_rds() |> 
   select(scientific_name, confidence) |> 
   group_split(scientific_name) |> 
