@@ -106,7 +106,8 @@ abundance_pnae <- file.path(data_dir, "02_augamolls_species_abundance.csv") |>
   # remove unmatched species
   filter(!is.na(birdlife_name)) |>     
   # select relevant columns
-  select(birdlife_name, abundance_eng, category_eng) |> 
+  rename(pnae_name = scientific_name) |> 
+  select(birdlife_name, abundance_eng, category_eng, pnae_name) |> 
   # rename columns to indicate data source
   rename_with(~str_replace(.x, "_eng$", "_pnae"), everything()) 
 
@@ -120,7 +121,7 @@ abundance_atlas <- file.path(data_dir, "llista_abundancia_julia.xlsx") |>
   # rename abundance column for clarity
   rename(abundance_atlas = abundancia) |>
   # select only relevant columns
-  select(birdlife_name, abundance_atlas)
+  select(birdlife_name, abundance_atlas, atlas_name)
 
 ### PHYLOGENY ####
 
@@ -182,7 +183,8 @@ audio_df <- file.path(birdnet_dir, fin) |>
     names_prefix = "conf_"
   ) |> 
   # match species names to BirdLife taxonomy
-  check_birdlife(species_name = scientific_name, birdnet_check = F) |>
+  check_birdlife(species_name = scientific_name, birdnet_check = F) |> 
+  rename(birdnet_name_status = name_type) |> 
   select(-scientific_name) |> 
   # merge with prevalence, census, abundance, and phylogeny tables
   left_join(wnvp, by = "birdlife_name") |> 
@@ -195,9 +197,9 @@ audio_df <- file.path(birdnet_dir, fin) |>
     matches("^birdlife_[nfo]"), 
     birdnet_name, 
     starts_with("total"), 
-    contains("atlas"), 
-    contains("pnae"), 
-    contains("prevalence"), 
+    contains("_atlas"), 
+    contains("_pnae"), 
+    contains("_prevalence$"), 
     starts_with("conf_"), 
     everything()
   ) |> 
